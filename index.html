@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midnight Shelf · Private fic tracker</title>
+<meta name="description" content="A fic shelf only you can see: title, author, ship, link, and a few honest words. Your data lives in your own browser and a local backup file — no account, no server.">
+<style>
+  :root {
+    --bg: #181F30;
+    --panel: #212A40;
+    --panel-soft: #28324B;
+    --line: #33405E;
+    --lamp: #E8B15C;
+    --lamp-soft: #F3CE8E;
+    --text: #F0EAE0;
+    --muted: #8D96AC;
+    --reading: #E8B15C;
+    --done: #8FBC9F;
+    --dropped: #C98A97;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 36px 18px 80px; }
+
+  /* ---------- Header ---------- */
+  header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+  .eyebrow { color: var(--lamp); font-size: 13px; letter-spacing: 3px; margin-bottom: 8px; }
+  h1 { font-family: Georgia, 'Times New Roman', serif; font-size: 34px; font-weight: 700; margin: 0; line-height: 1.2; }
+  .stats { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .btn-primary {
+    background: var(--lamp); color: #2A2313; border: none; border-radius: 12px;
+    padding: 11px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 6px 18px rgba(232,177,92,.25); font-family: inherit;
+  }
+
+  /* ---------- Shelf file bar ---------- */
+  .ledger-bar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 14px; margin-bottom: 20px; font-size: 13px;
+  }
+  .ledger-bar .status { color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ledger-bar .status.on { color: var(--done); }
+  .ledger-bar .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-mini {
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    border-radius: 8px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .btn-mini:hover { border-color: var(--lamp); color: var(--lamp); }
+  .btn-mini.accent { border-color: var(--lamp); color: var(--lamp); }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .search { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+  .search input { background: none; border: none; outline: none; color: var(--text); font-size: 14px; width: 100%; font-family: inherit; }
+  .chip {
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .chip.active { background: var(--panel-soft); }
+  .chip.active[data-f="all"] { border-color: var(--muted); color: var(--muted); }
+  .chip.active[data-f="reading"], .chip.active[data-s="reading"] { border-color: var(--reading); color: var(--reading); }
+  .chip.active[data-f="done"], .chip.active[data-s="done"] { border-color: var(--done); color: var(--done); }
+  .chip.active[data-f="dropped"], .chip.active[data-s="dropped"] { border-color: var(--dropped); color: var(--dropped); }
+
+  /* ---------- Fic cards ---------- */
+  .list { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; }
+  .spine { width: 6px; flex-shrink: 0; }
+  .card-body { padding: 16px 18px; flex: 1; min-width: 0; }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .book-title { font-family: Georgia, 'Times New Roman', serif; font-size: 19px; font-weight: 700; margin: 0; display: inline; }
+  .badge { font-size: 11px; border-radius: 999px; padding: 2px 9px; border: 1px solid; margin-left: 8px; vertical-align: 3px; white-space: nowrap; }
+  .byline { margin-top: 6px; font-size: 12.5px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+  .byline b { color: var(--text); font-weight: 500; }
+  .meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .stars { color: var(--lamp); font-size: 14px; letter-spacing: 2px; }
+  .stars .off { color: var(--line); }
+  .tag {
+    font-size: 12px; color: var(--muted); cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px;
+  }
+  .tag:hover { color: var(--lamp); border-color: var(--lamp); }
+  .icon-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 6px; font-size: 15px; font-family: inherit; }
+  .icon-btn:hover { color: var(--text); }
+  .summary-box {
+    margin-top: 12px; padding: 10px 14px; background: var(--bg);
+    border-radius: 10px; border-left: 3px solid var(--lamp); font-size: 13.5px; line-height: 1.7;
+  }
+  .summary-box p { margin: 0; }
+  .note { margin: 12px 0 0; font-size: 14px; line-height: 1.7; }
+  .note .say { color: var(--muted); font-size: 12px; margin-right: 6px; }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .revisit { color: var(--lamp); font-size: 13px; text-decoration: none; }
+  .revisit:hover { text-decoration: underline; }
+  .date { font-size: 11px; color: var(--muted); }
+  .confirm { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 13px; color: var(--dropped); flex-wrap: wrap; }
+  .confirm button { border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 12px; font-family: inherit; }
+  .confirm .yes { background: var(--dropped); color: var(--bg); border: none; }
+  .confirm .no { background: none; color: var(--muted); border: 1px solid var(--line); }
+
+  /* ---------- Empty state ---------- */
+  .empty { text-align: center; padding: 70px 20px; color: var(--muted); font-size: 14px; line-height: 1.9; }
+  .empty .icon { font-size: 36px; margin-bottom: 10px; }
+
+  /* ---------- Modal form ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,14,24,.72);
+    display: none; justify-content: center; align-items: flex-start;
+    overflow-y: auto; padding: 40px 16px; z-index: 50;
+  }
+  .overlay.show { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; width: 100%; max-width: 560px; padding: 24px 24px 28px; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .modal-head h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 20px; margin: 0; }
+  .field { margin-bottom: 16px; }
+  .field label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; letter-spacing: 1px; }
+  .field input, .field textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; font-family: inherit;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--lamp); }
+  .field textarea { min-height: 74px; resize: vertical; }
+  .row { display: flex; flex-wrap: wrap; gap: 24px; }
+  .row2 { display: flex; gap: 12px; }
+  .row2 .field { flex: 1; }
+  .status-btns { display: flex; gap: 8px; }
+  .star-pick { font-size: 22px; letter-spacing: 4px; cursor: pointer; user-select: none; }
+  .star-pick span { color: var(--line); }
+  .star-pick span.on { color: var(--lamp); }
+  .save-btn { width: 100%; padding: 12px 0; font-size: 15px; border-radius: 12px; }
+
+  /* ---------- Tag picker ---------- */
+  .tag-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag-opt {
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    border-radius: 999px; padding: 5px 13px; font-size: 13px; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tag-opt.on { border-color: var(--lamp); color: var(--lamp); background: var(--panel-soft); }
+  .tag-opt .del { color: var(--muted); font-size: 11px; line-height: 1; }
+  .tag-opt .del:hover { color: var(--dropped); }
+  .tag-custom { display: flex; gap: 8px; margin-top: 10px; }
+  .tag-custom input {
+    flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 12px; color: var(--text); font-size: 13px; outline: none; font-family: inherit;
+  }
+  .tag-custom input:focus { border-color: var(--lamp); }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 48px; line-height: 1.8; }
+  footer a { color: var(--lamp); text-decoration: none; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-soft); border: 1px solid var(--line); color: var(--text);
+    padding: 10px 20px; border-radius: 999px; font-size: 13px; z-index: 99;
+    opacity: 0; transition: opacity .25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 28px; }
+    .card-body { padding: 14px; }
+    .row2 { flex-direction: column; gap: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .toast { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">🌙 A corner only you can see</div>
+      <h1>Midnight Shelf</h1>
+      <div class="stats" id="stats"></div>
+    </div>
+    <button class="btn-primary" onclick="openAdd()">＋ Add a fic</button>
+  </header>
+
+  <div class="ledger-bar" id="ledgerBar">
+    <span class="status" id="ledgerStatus">📒 Saved in this browser</span>
+    <span class="actions" id="ledgerActions"></span>
+  </div>
+
+  <div class="toolbar">
+    <div class="search">🔍<input id="query" placeholder="Search title, author, ship, tags, summary…" oninput="render()"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="chip active" data-f="all" onclick="setFilter('all',this)">All</button>
+      <button class="chip" data-f="reading" onclick="setFilter('reading',this)">Reading</button>
+      <button class="chip" data-f="done" onclick="setFilter('done',this)">Finished</button>
+      <button class="chip" data-f="dropped" onclick="setFilter('dropped',this)">Dropped</button>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <footer id="footer">
+    No account. No server. Your shelf lives in your own browser — link a shelf file for an automatic local JSON backup, and export before switching devices.<br>
+    <a href="#" onclick="exportData();return false">Export backup</a> ·
+    <a href="#" onclick="importData();return false">Import backup</a>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Add / edit modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Add a new fic</h2>
+      <button class="icon-btn" onclick="closeForm()">✕</button>
+    </div>
+
+    <div class="field">
+      <label>Title *</label>
+      <input id="f-title" placeholder="e.g. All the Young Dudes">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Author</label>
+        <input id="f-author" placeholder="remember who wrote it">
+      </div>
+      <div class="field">
+        <label>Ship / Characters</label>
+        <input id="f-chars" placeholder="e.g. Sirius/Remus">
+      </div>
+    </div>
+    <div class="field">
+      <label>Link (your way back to it)</label>
+      <input id="f-link" placeholder="https://…">
+    </div>
+
+    <div class="row" style="margin-bottom:16px;">
+      <div>
+        <label style="font-size:12px;color:var(--muted);letter-spacing:1px;display:block;margin-bottom:6px;">Status</label>
+        <div class="status-btns">
+          <button class="chip" data-s="reading" onclick="pickStatus('reading')">Reading</button>
+          <button class="chip" data-s="done" onclick="pickStatus('done')">Finished</button>
+          <button class="chip" data-s="dropped" onclick="pickStatus('dropped')">Dropped</button>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);letter-spacing:1px;display:block;margin-bottom:6px;">Rating</label>
+        <div class="star-pick" id="starPick"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Tags (tap to select)</label>
+      <div class="tag-picker" id="tagPicker"></div>
+      <div class="tag-custom">
+        <input id="f-customTag" placeholder="Something missing? Type a custom tag and press Enter">
+        <button class="btn-mini" onclick="addCustomTag()">Add</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Summary (just paste it from the site)</label>
+      <textarea id="f-summary" placeholder="Paste the summary here so future-you knows what it was about"></textarea>
+    </div>
+    <div class="field">
+      <label>My take (a few honest words)</label>
+      <textarea id="f-note" placeholder="Stayed up all night for this one, the ending destroyed me…"></textarea>
+    </div>
+
+    <button class="btn-primary save-btn" id="saveBtn" onclick="saveForm()">✓ Put it on the shelf</button>
+  </div>
+</div>
+
+<script>
+const STORE_KEY = "novel-shelf-data";
+const CUSTOM_TAG_KEY = "novel-shelf-custom-tags";
+const STATUS = {
+  reading: { label: "Reading", color: "var(--reading)" },
+  done:    { label: "Finished", color: "var(--done)" },
+  dropped: { label: "Dropped", color: "var(--dropped)" },
+};
+
+// Preset tags (tap to select)
+const PRESET_TAGS = [
+  "Fluff", "Angst", "Slow Burn", "Enemies to Lovers", "Friends to Lovers",
+  "Hurt/Comfort", "AU", "Canon Divergence", "Fix-It", "Omegaverse",
+  "Soulmate AU", "Fake Dating", "Mutual Pining", "Found Family",
+  "Time Travel", "Reincarnation", "Sci-Fi", "Fantasy", "Horror",
+  "Apocalypse", "Smut", "Angst with a Happy Ending", "Major Character Death",
+  "HEA", "One-Shot", "Long Fic", "Complete", "WIP"
+];
+
+let novels = [];
+let customTags = [];
+let filter = "all";
+let editingId = null;
+let formStatus = "done";
+let formRating = 0;
+let formTags = new Set();
+let confirmDeleteId = null;
+let ledgerHandle = null;
+const canUseLedger = "showSaveFilePicker" in window;
+
+/* ================= Helpers ================= */
+function text(v) { return String(v || "").toLowerCase(); }
+function makeId() {
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+}
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function safeLink(url) {
+  const u = String(url || "").trim();
+  if (!u) return "";
+  return /^https?:\/\//i.test(u) ? u : "https://" + u;
+}
+function starHtml(n) {
+  let h = "";
+  for (let i = 1; i <= 5; i++) h += i <= n ? "★" : '<span class="off">★</span>';
+  return '<span class="stars">' + h + "</span>";
+}
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+/* ================= Local storage (layer 1) ================= */
+function load() {
+  try { novels = JSON.parse(localStorage.getItem(STORE_KEY) || "[]"); }
+  catch (e) { novels = []; }
+  try { customTags = JSON.parse(localStorage.getItem(CUSTOM_TAG_KEY) || "[]"); }
+  catch (e) { customTags = []; }
+  novels.forEach(n => {
+    if (n.aiSummary && !n.summary) n.summary = n.aiSummary;
+    if (n.aiCharacters && !n.characters) n.characters = n.aiCharacters;
+    if (!n.id || !/^[a-z0-9-]+$/i.test(String(n.id))) n.id = makeId();
+    if (!n.addedAt) n.addedAt = n.updatedAt || Date.now();
+    if (!n.updatedAt) n.updatedAt = n.addedAt || Date.now();
+  });
+}
+async function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(novels));
+  if (ledgerHandle) await writeLedger();
+}
+function saveCustomTags() {
+  localStorage.setItem(CUSTOM_TAG_KEY, JSON.stringify(customTags));
+}
+
+/* ================= Shelf file (layer 2: local JSON via File System Access API) ================= */
+function idb() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open("novel-shelf-idb", 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("kv");
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function idbSet(key, val) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("kv", "readwrite");
+    tx.objectStore("kv").put(val, key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const req = db.transaction("kv").objectStore("kv").get(key);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function idbDel(key) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("kv", "readwrite");
+    tx.objectStore("kv").delete(key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+
+async function writeLedger() {
+  try {
+    const w = await ledgerHandle.createWritable();
+    await w.write(JSON.stringify(novels, null, 2));
+    await w.close();
+  } catch (e) {
+    toast("Couldn't write to the shelf file — your data is still safe in this browser");
+    console.error(e);
+  }
+}
+
+function mergeIn(arr) {
+  if (!Array.isArray(arr)) return 0;
+  const map = new Map(novels.map(n => [n.id, n]));
+  let changed = 0;
+  arr.forEach(n => {
+    if (!n || !n.title) return;
+    if (!n.id || !/^[a-z0-9-]+$/i.test(String(n.id))) n.id = makeId();
+    if (n.aiSummary && !n.summary) n.summary = n.aiSummary;
+    if (n.aiCharacters && !n.characters) n.characters = n.aiCharacters;
+    if (!n.addedAt) n.addedAt = n.updatedAt || Date.now();
+    if (!n.updatedAt) n.updatedAt = n.addedAt || 0;
+    const old = map.get(n.id);
+    if (!old) { map.set(n.id, n); changed++; }
+    else if ((n.updatedAt || 0) > (old.updatedAt || 0)) { map.set(n.id, n); changed++; }
+  });
+  novels = Array.from(map.values()).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  return changed;
+}
+
+async function newLedger() {
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: "my-midnight-shelf.json",
+      types: [{ description: "Shelf backup", accept: { "application/json": [".json"] } }],
+    });
+    ledgerHandle = handle;
+    await idbSet("ledgerHandle", handle);
+    await writeLedger();
+    renderLedgerBar();
+    toast("Shelf file created — every save now writes to it automatically");
+  } catch (e) { /* user cancelled */ }
+}
+
+async function openLedger() {
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description: "Shelf backup", accept: { "application/json": [".json"] } }],
+    });
+    const perm = await handle.requestPermission({ mode: "readwrite" });
+    if (perm !== "granted") return;
+    const file = await handle.getFile();
+    const t = await file.text();
+    let added = 0;
+    if (t.trim()) {
+      try {
+        added = mergeIn(JSON.parse(t));
+      } catch (e) {
+        toast("That file isn't a shelf backup — not linked, so it won't be overwritten");
+        return;
+      }
+    }
+    ledgerHandle = handle;
+    await idbSet("ledgerHandle", handle);
+    await save();
+    render(); renderLedgerBar();
+    toast(added > 0 ? "Shelf file linked — merged " + added + " entries" : "Shelf file linked");
+  } catch (e) { /* user cancelled */ }
+}
+
+async function reconnectLedger() {
+  const handle = await idbGet("ledgerHandle");
+  if (!handle) return;
+  try {
+    const perm = await handle.requestPermission({ mode: "readwrite" });
+    if (perm !== "granted") { toast("File permission wasn't granted"); return; }
+    const file = await handle.getFile();
+    const t = await file.text();
+    let added = 0;
+    if (t.trim()) {
+      try {
+        added = mergeIn(JSON.parse(t));
+      } catch (e) {
+        toast("Shelf file looks corrupted — not reconnected, so it won't be overwritten");
+        return;
+      }
+    }
+    ledgerHandle = handle;
+    await save();
+    render(); renderLedgerBar();
+    toast(added > 0 ? "Reconnected — merged " + added + " entries" : "Reconnected to \"" + handle.name + "\"");
+  } catch (e) {
+    toast("Shelf file not found — moved or deleted?");
+    await idbDel("ledgerHandle");
+    renderLedgerBar();
+  }
+}
+
+async function disconnectLedger() {
+  ledgerHandle = null;
+  await idbDel("ledgerHandle");
+  renderLedgerBar();
+  toast("Unlinked — your shelf is still saved in this browser");
+}
+
+async function renderLedgerBar() {
+  const status = document.getElementById("ledgerStatus");
+  const actions = document.getElementById("ledgerActions");
+  if (!canUseLedger) {
+    status.className = "status";
+    status.textContent = "📒 Saved in this browser (shelf files aren't supported here — use Export backup below)";
+    actions.innerHTML = "";
+    return;
+  }
+  if (ledgerHandle) {
+    status.className = "status on";
+    status.textContent = "📒 Shelf file \"" + ledgerHandle.name + "\" linked — every save writes to it";
+    actions.innerHTML = '<button class="btn-mini" onclick="disconnectLedger()">Unlink</button>';
+    return;
+  }
+  const saved = await idbGet("ledgerHandle").catch(() => null);
+  status.className = "status";
+  if (saved) {
+    status.textContent = "📒 Found your last shelf file \"" + saved.name + "\"";
+    actions.innerHTML =
+      '<button class="btn-mini accent" onclick="reconnectLedger()">Reconnect</button>' +
+      '<button class="btn-mini" onclick="openLedger()">Open another</button>';
+  } else {
+    status.textContent = "📒 Saved in this browser — link a shelf file for an extra local backup";
+    actions.innerHTML =
+      '<button class="btn-mini accent" onclick="newLedger()">Create shelf file</button>' +
+      '<button class="btn-mini" onclick="openLedger()">Open existing file</button>';
+  }
+}
+
+/* ================= Rendering ================= */
+function render() {
+  const q = document.getElementById("query").value.trim().toLowerCase();
+  const list = document.getElementById("list");
+  const shown = novels.filter(n => {
+    if (filter !== "all" && n.status !== filter) return false;
+    if (!q) return true;
+    return (
+      text(n.title).includes(q) ||
+      text(n.author).includes(q) ||
+      text(n.characters).includes(q) ||
+      text(n.link).includes(q) ||
+      text(n.note).includes(q) ||
+      text(n.summary).includes(q) ||
+      (n.tags || []).some(t => text(t).includes(q))
+    );
+  });
+
+  const doneCount = novels.filter(n => n.status === "done").length;
+  document.getElementById("stats").textContent =
+    novels.length + " on the shelf · " + doneCount + " finished";
+
+  if (shown.length === 0) {
+    list.innerHTML =
+      '<div class="empty"><div class="icon">📖</div>' +
+      (novels.length === 0
+        ? "The shelf is empty. Tap \"＋ Add a fic\" up top<br>and shelve the first story you ever stayed up for."
+        : "Nothing matches that search.") +
+      "</div>";
+    return;
+  }
+
+  list.innerHTML = shown.map(n => {
+    const st = STATUS[n.status] || STATUS.done;
+    const link = safeLink(n.link);
+    const linkLabel = n.status === "reading" ? "▶ Continue reading" : "🔗 Revisit";
+    return (
+      '<article class="card">' +
+        '<div class="spine" style="background:' + st.color + '"></div>' +
+        '<div class="card-body">' +
+          '<div class="card-top"><div style="min-width:0;">' +
+            '<h2 class="book-title">' + esc(n.title) + "</h2>" +
+            '<span class="badge" style="color:' + st.color + ";border-color:" + st.color + '">' + st.label + "</span>" +
+            ((n.author || n.characters)
+              ? '<div class="byline">' +
+                  (n.author ? "<span>by <b>" + esc(n.author) + "</b></span>" : "") +
+                  (n.characters ? "<span>ship <b>" + esc(n.characters) + "</b></span>" : "") +
+                "</div>"
+              : "") +
+            '<div class="meta">' +
+              (n.rating > 0 ? starHtml(n.rating) : "") +
+              (n.tags || []).map(t =>
+                '<span class="tag" onclick="searchTag(\'' + encodeURIComponent(t) + '\')">#' + esc(t) + "</span>"
+              ).join("") +
+            "</div>" +
+          "</div>" +
+          '<div style="flex-shrink:0;">' +
+            '<button class="icon-btn" title="Edit" onclick="openEdit(\'' + n.id + '\')">✎</button>' +
+            '<button class="icon-btn" title="Delete" onclick="askDelete(\'' + n.id + '\')">🗑</button>' +
+          "</div></div>" +
+          (n.summary
+            ? '<div class="summary-box"><p>' + esc(n.summary) + "</p></div>"
+            : "") +
+          (n.note ? '<p class="note"><span class="say">my take</span>' + esc(n.note) + "</p>" : "") +
+          '<div class="card-foot">' +
+            (link ? '<a class="revisit" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">' + linkLabel + "</a>" : "<span></span>") +
+            '<span class="date">' + "Added " + new Date(n.addedAt).toLocaleDateString("en-US") + "</span>" +
+          "</div>" +
+          (confirmDeleteId === n.id
+            ? '<div class="confirm">Take \u201C' + esc(n.title) + "\u201D off the shelf?" +
+              '<button class="yes" onclick="doDelete(\'' + n.id + '\')">Remove</button>' +
+              '<button class="no" onclick="confirmDeleteId=null;render()">Keep it</button></div>'
+            : "") +
+        "</div>" +
+      "</article>"
+    );
+  }).join("");
+}
+
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll(".toolbar .chip").forEach(c => c.classList.remove("active"));
+  btn.classList.add("active");
+  render();
+}
+
+// Tap a tag on a card -> search for it
+function searchTag(encoded) {
+  const t = decodeURIComponent(encoded);
+  document.getElementById("query").value = t;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ================= Delete ================= */
+function askDelete(id) { confirmDeleteId = id; render(); }
+async function doDelete(id) {
+  novels = novels.filter(n => n.id !== id);
+  confirmDeleteId = null;
+  await save(); render();
+}
+
+/* ================= Tag picker ================= */
+function allTagOptions() {
+  // Presets + tags used by any fic + custom tags + tags selected on this fic
+  // (pulling from fics means imported data brings its tags into the picker too)
+  const usedTags = novels.flatMap(n => Array.isArray(n.tags) ? n.tags : []);
+  const set = new Set([...PRESET_TAGS, ...usedTags, ...customTags]);
+  formTags.forEach(t => set.add(t));
+  return Array.from(set);
+}
+function renderTagPicker() {
+  const el = document.getElementById("tagPicker");
+  el.innerHTML = "";
+  allTagOptions().forEach(t => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tag-opt" + (formTags.has(t) ? " on" : "");
+    btn.textContent = t;
+    btn.onclick = () => {
+      if (formTags.has(t)) formTags.delete(t); else formTags.add(t);
+      renderTagPicker();
+    };
+    // Custom tags get a small x to remove them from quick tags (saved fics keep theirs)
+    if (customTags.includes(t)) {
+      const del = document.createElement("span");
+      del.className = "del";
+      del.textContent = "✕";
+      del.title = "Remove from quick tags";
+      del.onclick = (e) => {
+        e.stopPropagation();
+        customTags = customTags.filter(x => x !== t);
+        // Note: only removes from quick tags, never from the fic being edited
+        saveCustomTags();
+        renderTagPicker();
+      };
+      btn.appendChild(del);
+    }
+    el.appendChild(btn);
+  });
+}
+function addCustomTag() {
+  const inp = document.getElementById("f-customTag");
+  // Multiple at once: split on spaces, commas, and CJK separators
+  const parts = inp.value.split(/[\s,，、;；]+/).filter(Boolean);
+  if (parts.length === 0) return;
+  parts.forEach(t => {
+    if (!PRESET_TAGS.includes(t) && !customTags.includes(t)) customTags.push(t);
+    formTags.add(t);
+  });
+  saveCustomTags();
+  inp.value = "";
+  renderTagPicker();
+}
+
+/* ================= Form ================= */
+function openAdd() {
+  editingId = null;
+  fillForm({ title: "", author: "", characters: "", link: "", status: "done", rating: 0, tags: [], note: "", summary: "" });
+  document.getElementById("modalTitle").textContent = "Add a new fic";
+  document.getElementById("saveBtn").textContent = "✓ Put it on the shelf";
+  showOverlay(true);
+}
+function openEdit(id) {
+  const n = novels.find(x => x.id === id);
+  if (!n) return;
+  editingId = id;
+  fillForm(n);
+  document.getElementById("modalTitle").textContent = "Edit this fic";
+  document.getElementById("saveBtn").textContent = "✓ Save changes";
+  showOverlay(true);
+}
+function fillForm(n) {
+  document.getElementById("f-title").value = n.title || "";
+  document.getElementById("f-author").value = n.author || "";
+  document.getElementById("f-chars").value = n.characters || "";
+  document.getElementById("f-link").value = n.link || "";
+  document.getElementById("f-note").value = n.note || "";
+  document.getElementById("f-summary").value = n.summary || "";
+  document.getElementById("f-customTag").value = "";
+  formRating = n.rating || 0;
+  formTags = new Set(n.tags || []);
+  pickStatus(n.status || "done");
+  drawStars();
+  renderTagPicker();
+}
+function pickStatus(s) {
+  formStatus = s;
+  document.querySelectorAll(".status-btns .chip").forEach(c => {
+    c.classList.toggle("active", c.dataset.s === s);
+  });
+}
+function drawStars() {
+  const el = document.getElementById("starPick");
+  el.innerHTML = "";
+  for (let i = 1; i <= 5; i++) {
+    const s = document.createElement("span");
+    s.textContent = "★";
+    if (i <= formRating) s.className = "on";
+    s.onclick = () => { formRating = (formRating === i) ? 0 : i; drawStars(); };
+    el.appendChild(s);
+  }
+}
+function showOverlay(show) {
+  document.getElementById("overlay").classList.toggle("show", show);
+  if (show) setTimeout(() => document.getElementById("f-title").focus(), 50);
+}
+function closeForm() { showOverlay(false); }
+
+async function saveForm() {
+  const title = document.getElementById("f-title").value.trim();
+  if (!title) { document.getElementById("f-title").focus(); return; }
+  // If the custom-tag box still has unsubmitted text, sweep it in
+  if (document.getElementById("f-customTag").value.trim()) addCustomTag();
+  const now = Date.now();
+  const entry = {
+    id: editingId || makeId(),
+    title,
+    author: document.getElementById("f-author").value.trim(),
+    characters: document.getElementById("f-chars").value.trim(),
+    link: document.getElementById("f-link").value.trim(),
+    status: formStatus,
+    rating: formRating,
+    tags: Array.from(formTags),
+    note: document.getElementById("f-note").value.trim(),
+    summary: document.getElementById("f-summary").value.trim(),
+    addedAt: editingId ? (novels.find(n => n.id === editingId) || {}).addedAt || now : now,
+    updatedAt: now,
+  };
+  if (editingId) {
+    novels = novels.map(n => n.id === editingId ? entry : n);
+  } else {
+    novels.unshift(entry);
+  }
+  await save(); render(); showOverlay(false);
+  toast(ledgerHandle ? "Saved — shelf file synced ✓" : "Saved ✓");
+}
+
+/* ================= Backup (works in every browser) ================= */
+function exportData() {
+  const blob = new Blob([JSON.stringify(novels, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "midnight-shelf-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importData() {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json,application/json";
+  inp.onchange = () => {
+    const file = inp.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const added = mergeIn(JSON.parse(reader.result));
+        await save(); render();
+        toast("Import complete — merged " + added + " entries");
+      } catch (e) {
+        toast("Couldn't read that file — is it a backup exported from here?");
+      }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+
+/* ================= Keyboard & boot ================= */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeForm();
+});
+document.getElementById("overlay").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeForm();
+});
+document.getElementById("f-customTag").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); addCustomTag(); }
+});
+
+load();
+render();
+renderLedgerBar();
+</script>
+</body>
+</html>
