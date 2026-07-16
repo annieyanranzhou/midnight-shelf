@@ -23,15 +23,17 @@ Because your bookmarks are scattered across five sites, your spreadsheet is a wa
 - **Shelf file**: link a local JSON file once, and every save writes to it automatically (Chrome/Edge). Put it in a synced folder (Dropbox, OneDrive…) and you've got your own private cloud backup.
 - Export / import JSON backup as a fallback that works in every browser
 
-## One-tap shelving (bookmarklet)
+## One-tap shelving
 
-Reading a fic on AO3, Wattpad, or anywhere else? One click shelves it — no copy-pasting titles and links.
+Reading a fic on AO3, Wattpad, or anywhere else? One tap shelves it — no copy-pasting titles and links. Your shelf opens with the title, link and author pre-filled and status set to Reading; if the fic is already shelved (same link), that entry opens for editing instead of creating a duplicate.
 
-1. Open your deployed shelf and click **🔖 One-tap bookmarklet** in the footer
-2. Drag the "🌙 Shelve this fic" button onto your bookmarks bar (on phones: copy the code into a bookmark's URL instead — instructions are in the panel)
-3. While reading, hit the bookmark: your shelf opens with the title, link and author pre-filled, status set to Reading. Rate, tag, save.
+**Desktop**: open your deployed shelf → footer **🔖 One-tap bookmarklet** → drag the "🌙 Shelve this fic" button onto your bookmarks bar. Click it on any fic page.
 
-If the fic is already on your shelf, it opens that entry for editing instead of creating a duplicate. The bookmarklet is generated from your own shelf's address, so it works no matter what domain you host it on. Note: a few sites with strict security policies block all bookmarklets — on those, add manually.
+**Android (recommended)**: open the shelf in Chrome/Edge → browser menu → "Add to Home screen" / "Install app". The shelf then appears in the system share sheet — while reading in any app, tap Share → Midnight Shelf.
+
+**iPhone**: iOS doesn't support the share-target install, so either use the bookmark trick (steps in the footer panel, works in Safari), or build a Shortcut: new Shortcut named "Shelve this fic" → enable "Show in Share Sheet" (accepts Safari web pages / URLs) → actions: Get URLs from Input → URL Encode → Text (`https://your-shelf-domain/?add=1&url=` + the encoded variable) → Open URL. The link arrives automatically; type the title yourself.
+
+The bookmarklet is generated from your own shelf's address, so it works on any domain. A few sites with strict security policies block all bookmarklets — on those, add manually.
 
 ## How your data is stored
 

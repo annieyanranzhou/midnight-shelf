@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#181F30">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Midnight Shelf · Private fic tracker</title>
 <meta name="description" content="A fic shelf only you can see: title, author, ship, link, and a few honest words. Your data lives in your own browser and a local backup file — no account, no server.">
 <style>
@@ -294,7 +298,14 @@
       <a id="bmLink" href="#" style="display:inline-block;background:var(--panel-soft);border:1px dashed var(--lamp);color:var(--lamp-soft);padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600;">🌙 Shelve this fic</a>
     </div>
     <div class="field">
-      <label>On a phone (or if dragging doesn't work)</label>
+      <label>On a phone (recommended: share to shelve)</label>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:6px 0 10px;">
+        <b>Android</b>: open the shelf in Chrome/Edge → browser menu → "Add to Home screen" (or "Install app"). From then on, tap Share in any app while reading and pick "Midnight Shelf" — the fic arrives pre-filled.<br>
+        <b>iPhone</b>: that share route isn't supported; use the bookmark trick below (works in Safari), or build a share-sheet Shortcut — steps are in the project README.
+      </p>
+    </div>
+    <div class="field">
+      <label>Fallback: the bookmark trick (when dragging isn't an option)</label>
       <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:6px 0 10px;">
         1. Copy the code below&ensp;2. Bookmark any page&ensp;3. Edit that bookmark: rename it to "Shelve this fic" and replace its URL with the code&ensp;4. While reading, open that bookmark — on mobile Chrome, type its name in the address bar.
       </p>
@@ -825,15 +836,31 @@ function importData() {
   inp.click();
 }
 
-/* ================= One-tap shelving (bookmarklet) ================= */
-// Receives ?add=1&title=…&url=…&author=… (sent by the bookmarklet),
-// opens the add form pre-filled, then cleans the address bar.
+/* ================= One-tap shelving (bookmarklet & mobile share) ================= */
+// Two delivery formats are accepted:
+//  bookmarklet → ?add=1&title=…&url=…&author=…
+//  Android system share (PWA share_target) → ?share_title=…&share_text=…&share_url=…
 function handleExternalAdd() {
   const p = new URLSearchParams(location.search);
-  if (p.get("add") !== "1") return;
-  const title  = (p.get("title")  || "").trim().slice(0, 300);
-  const url    = (p.get("url")    || "").trim().slice(0, 2000);
-  const author = (p.get("author") || "").trim().slice(0, 120);
+  const isBm = p.get("add") === "1";
+  const isShare = p.has("share_title") || p.has("share_text") || p.has("share_url");
+  if (!isBm && !isShare) return;
+
+  let title = "", url = "", author = "";
+  if (isBm) {
+    title  = (p.get("title")  || "").trim();
+    url    = (p.get("url")    || "").trim();
+    author = (p.get("author") || "").trim();
+  } else {
+    // Apps are wildly inconsistent about share fields: the link may arrive in url or buried in text
+    const st = (p.get("share_title") || "").trim();
+    const sx = (p.get("share_text")  || "").trim();
+    const su = (p.get("share_url")   || "").trim();
+    const pick = s => (String(s).match(/https?:\/\/\S+/) || [""])[0];
+    url = su || pick(sx) || pick(st);
+    title = (st && st !== url) ? st : sx.replace(/https?:\/\/\S+/g, "").trim();
+  }
+  title = title.slice(0, 300); url = url.slice(0, 2000); author = author.slice(0, 120);
   history.replaceState(null, "", location.pathname); // so a refresh won't re-trigger
   if (!title && !url) return;
 
@@ -853,6 +880,12 @@ function handleExternalAdd() {
   document.getElementById("f-link").value   = url;
   document.getElementById("f-author").value = author;
   toast("Details filled in — check, tag and save");
+}
+
+// Register the service worker: after "Add to Home screen" on Android,
+// the shelf shows up right in the system share menu.
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
 function bookmarkletCode() {
