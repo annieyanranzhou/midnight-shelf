@@ -205,7 +205,8 @@
   <footer id="footer">
     No account. No server. Your shelf lives in your own browser — link a shelf file for an automatic local JSON backup, and export before switching devices.<br>
     <a href="#" onclick="exportData();return false">Export backup</a> ·
-    <a href="#" onclick="importData();return false">Import backup</a>
+    <a href="#" onclick="importData();return false">Import backup</a> ·
+    <a href="#" onclick="showBm(true);return false">🔖 One-tap bookmarklet</a>
   </footer>
 </div>
 
@@ -272,6 +273,37 @@
     </div>
 
     <button class="btn-primary save-btn" id="saveBtn" onclick="saveForm()">✓ Put it on the shelf</button>
+  </div>
+</div>
+
+<!-- Bookmarklet panel -->
+<div class="overlay" id="bmOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>🔖 One-tap shelving</h2>
+      <button class="icon-btn" onclick="showBm(false)">✕</button>
+    </div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.7;margin:0 0 16px;">
+      Reading a fic somewhere? Hit this bookmark and your shelf opens with the title, link and author already filled in — just rate, tag and save.
+    </p>
+    <div class="field">
+      <label>On a computer</label>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:6px 0 10px;">
+        Show your bookmarks bar (Ctrl/⌘ + Shift + B), then <b>drag this button onto it</b>. That's it — click it whenever you're on a fic page.
+      </p>
+      <a id="bmLink" href="#" style="display:inline-block;background:var(--panel-soft);border:1px dashed var(--lamp);color:var(--lamp-soft);padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600;">🌙 Shelve this fic</a>
+    </div>
+    <div class="field">
+      <label>On a phone (or if dragging doesn't work)</label>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;margin:6px 0 10px;">
+        1. Copy the code below&ensp;2. Bookmark any page&ensp;3. Edit that bookmark: rename it to "Shelve this fic" and replace its URL with the code&ensp;4. While reading, open that bookmark — on mobile Chrome, type its name in the address bar.
+      </p>
+      <textarea id="bmCode" readonly style="min-height:96px;font-size:12px;" onclick="this.select()"></textarea>
+      <div style="margin-top:8px;"><button class="btn-mini accent" onclick="copyBm()">Copy code</button></div>
+    </div>
+    <p id="bmWarn" style="display:none;color:var(--dropped);font-size:13px;line-height:1.6;margin:0;">
+      ⚠️ You're viewing the shelf as a local file, so this bookmarklet has nowhere to point. Open your deployed shelf (your pages.dev or custom domain) and grab it from there instead.
+    </p>
   </div>
 </div>
 
@@ -793,9 +825,80 @@ function importData() {
   inp.click();
 }
 
+/* ================= One-tap shelving (bookmarklet) ================= */
+// Receives ?add=1&title=…&url=…&author=… (sent by the bookmarklet),
+// opens the add form pre-filled, then cleans the address bar.
+function handleExternalAdd() {
+  const p = new URLSearchParams(location.search);
+  if (p.get("add") !== "1") return;
+  const title  = (p.get("title")  || "").trim().slice(0, 300);
+  const url    = (p.get("url")    || "").trim().slice(0, 2000);
+  const author = (p.get("author") || "").trim().slice(0, 120);
+  history.replaceState(null, "", location.pathname); // so a refresh won't re-trigger
+  if (!title && !url) return;
+
+  // Already shelved? Open that entry instead of creating a duplicate.
+  // Only the #fragment is stripped: on sites like JJWXC the book id lives in the query string.
+  const norm = s => String(s || "").replace(/#.*$/, "").replace(/\/+$/, "").toLowerCase();
+  const dup = url && novels.find(n => n.link && norm(n.link) === norm(url));
+  if (dup) {
+    openEdit(dup.id);
+    toast("Already on your shelf — opened it for editing");
+    return;
+  }
+
+  openAdd();
+  pickStatus("reading"); // you were literally just reading it
+  document.getElementById("f-title").value  = title;
+  document.getElementById("f-link").value   = url;
+  document.getElementById("f-author").value = author;
+  toast("Details filled in — check, tag and save");
+}
+
+function bookmarkletCode() {
+  const shelfUrl = location.origin + location.pathname;
+  const src = "(function(){var d=document;function m(s){var e=d.querySelector(s);"
+    + "return e?String(e.content||e.textContent||'').trim():''}"
+    + "var t=m('meta[property=\"og:title\"]')||d.title||'';"
+    + "var a=m('a[rel=\"author\"]')||m('meta[name=\"author\"]')||'';"
+    + "var u=" + JSON.stringify(shelfUrl) + "+'?add=1&title='+encodeURIComponent(t)"
+    + "+'&url='+encodeURIComponent(location.href)"
+    + "+(a?'&author='+encodeURIComponent(a):'');"
+    + "var w=window.open(u,'_blank');if(!w)location.href=u;})();";
+  return "javascript:" + src;
+}
+
+function showBm(show) {
+  document.getElementById("bmOverlay").classList.toggle("show", show);
+  if (!show) return;
+  const local = location.protocol === "file:";
+  document.getElementById("bmWarn").style.display = local ? "block" : "none";
+  const code = local ? "" : bookmarkletCode();
+  document.getElementById("bmLink").setAttribute("href", code || "#");
+  document.getElementById("bmCode").value = code;
+}
+document.getElementById("bmLink").addEventListener("click", e => {
+  e.preventDefault(); // it's for dragging, not clicking (clicking it here would just reload the shelf)
+  toast("Drag me onto your bookmarks bar 🙂");
+});
+document.getElementById("bmOverlay").addEventListener("click", e => {
+  if (e.target === e.currentTarget) showBm(false);
+});
+async function copyBm() {
+  const code = document.getElementById("bmCode").value;
+  if (!code) return;
+  try {
+    await navigator.clipboard.writeText(code);
+    toast("Copied — now paste it into a bookmark's URL");
+  } catch (e) {
+    document.getElementById("bmCode").select();
+    toast("Press Ctrl/⌘+C to copy the selected code");
+  }
+}
+
 /* ================= Keyboard & boot ================= */
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") closeForm();
+  if (e.key === "Escape") { closeForm(); showBm(false); }
 });
 document.getElementById("overlay").addEventListener("click", e => {
   if (e.target === e.currentTarget) closeForm();
@@ -807,6 +910,7 @@ document.getElementById("f-customTag").addEventListener("keydown", e => {
 load();
 render();
 renderLedgerBar();
+handleExternalAdd();
 </script>
 </body>
 </html>

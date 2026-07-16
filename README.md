@@ -23,6 +23,16 @@ Because your bookmarks are scattered across five sites, your spreadsheet is a wa
 - **Shelf file**: link a local JSON file once, and every save writes to it automatically (Chrome/Edge). Put it in a synced folder (Dropbox, OneDrive…) and you've got your own private cloud backup.
 - Export / import JSON backup as a fallback that works in every browser
 
+## One-tap shelving (bookmarklet)
+
+Reading a fic on AO3, Wattpad, or anywhere else? One click shelves it — no copy-pasting titles and links.
+
+1. Open your deployed shelf and click **🔖 One-tap bookmarklet** in the footer
+2. Drag the "🌙 Shelve this fic" button onto your bookmarks bar (on phones: copy the code into a bookmark's URL instead — instructions are in the panel)
+3. While reading, hit the bookmark: your shelf opens with the title, link and author pre-filled, status set to Reading. Rate, tag, save.
+
+If the fic is already on your shelf, it opens that entry for editing instead of creating a duplicate. The bookmarklet is generated from your own shelf's address, so it works no matter what domain you host it on. Note: a few sites with strict security policies block all bookmarklets — on those, add manually.
+
 ## How your data is stored
 
 1. **Browser storage** — always on. Survives refreshes and restarts. Cleared only if you wipe site data.
